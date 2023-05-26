@@ -2,3 +2,4 @@
 local_clone
 logs
 emails.list
+__pycache__

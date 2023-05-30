@@ -5,6 +5,8 @@ from utils import *
 FILE = 'emails.list'
 
 if __name__ == '__main__':
+
+
     users = list_all_users()
 
     # Write all users in a file
@@ -15,6 +17,4 @@ if __name__ == '__main__':
         for user in sorted(users, key=lambda user: user.email):
             f.write(str(user))
             f.write("\n\n")
-
-
 

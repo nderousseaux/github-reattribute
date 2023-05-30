@@ -6,6 +6,7 @@ import threading
 #Get from .env file
 username = os.getenv('GITHUB_USERNAME')
 token = os.getenv('GITHUB_TOKEN')
+CLONE_STRATEGY = os.getenv('CLONE_STRATEGY')
 
 if username is None:
     # Get from .env file
@@ -89,15 +90,21 @@ class User:
 # https://api.github.com/search/repositories?q=user:USERNAME
 def list_repos():
     repos_list = []
-    url = "https://api.github.com/search/repositories?q=user:" + username
-    # data = {"visibility": "all"}
     auth = ('token', token)
-    r = requests.get(url, auth=auth)
-    if r.status_code == 200:
-        repos = json.loads(r.text or r.content)
-        repos_list = repos['items']  
-    else:
-        print('Error: ' + str(r.status_code))
+    url = "https://api.github.com/search/repositories?q=user:" + username
+    
+    while True:
+        r = requests.get(url, auth=auth)
+        if r.status_code == 200:
+            repos = json.loads(r.text or r.content)
+            repos_list.extend(repos["items"])
+        else:
+            print('Error: ' + str(r.status_code))
+        
+        if "next" in r.links:
+            url = r.links["next"]["url"]
+        else:
+            break
     return repos_list
 
 # List all user for a given repository
@@ -106,19 +113,25 @@ def list_users(repo):
     user_list = []
     url = "https://api.github.com/repos/" + username + "/" + repo["name"] + "/commits"
     auth = ('token', token)
-    r = requests.get(url, auth=auth)
-    if r.status_code == 200:
-        commits = json.loads(r.text or r.content)
-        for commit in commits:
-            u = User(commit['commit']['author']['email'], commit['commit']['author']['name'], repo["ssh_url"])
-            if u not in user_list:
-                user_list.append(u)
-            else:
-                for user in user_list:
-                    if user == u:
-                        user.add_name(u.names[0])
-    else:
-        print('Error: ' + str(r.status_code))
+    while True:
+        r = requests.get(url, auth=auth)
+        if r.status_code == 200:
+            commits = json.loads(r.text or r.content)
+            for commit in commits:
+                u = User(commit['commit']['author']['email'], commit['commit']['author']['name'], repo["ssh_url"])
+                if u not in user_list:
+                    user_list.append(u)
+                else:
+                    for user in user_list:
+                        if user == u:
+                            user.add_name(u.names[0])
+        else:
+            print('Error: ' + str(r.status_code))
+        
+        if "next" in r.links:
+            url = r.links["next"]["url"]
+        else:
+            break
     return user_list
 
 
@@ -126,7 +139,10 @@ def list_users(repo):
 def list_all_users():
     all_users = []
     repos = list_repos()
+    print(f"Found {len(repos)} repositories")
+    i = 1
     for repo in repos:
+        print(f"\r\033[94m{i}/{len(repos)} ({repo['name']})\033[0m Getting users...", end="")
         users = list_users(repo)
         for user in users:
             if user not in all_users:
@@ -136,6 +152,8 @@ def list_all_users():
                     if u == user:
                         u.add_name(user.names[0])
                         u.add_repo(user.repo[0])
+        print(f"\r\033[94m{i}/{len(repos)} ({repo['name']})\033[0m Getting users... \033[92mOK\033[0m")
+        i+=1
     return all_users
 
 # Read all users from a file

@@ -7,53 +7,68 @@ from utils import *
 
 FILE = 'emails.list'
 
-def process_repo(repo, users, number, total, lock):
+def process_repo(repo, users, number, total, lock, actions):
 	name= repo.split("/")[-1].split(".")[0]
 	print(f"\r\033[94m{number}/{total} ({name})\033[0m Clonning repo...")
 	res = clone_repo(repo, name, lock)
 	if res != 0:
 		print(f"\r\033[94m{number}/{total} ({name})\033[0m Clonning repo... \033[91mERROR\033[0m")
 		return
-	
-	# Move script
-	res = os.system("cp git-rename.sh " + LOCAL_FOLDER + "/" + name + " >> " + LOG_FOLDER + "/" + name + ".log 2>&1")
-	log_absolute = os.path.abspath(LOG_FOLDER + "/" + name + ".log")
-	if res != 0:
-		print(f"\r\033[94m{number}/{total} ({name})\033[0m Moving script... \033[91mERROR\033[0m")
-		return
-	
 	print(f"\r\033[94m{number}/{total} ({name})\033[0m Clonning repo... \033[92mOK\033[0m")
+	log_absolute = os.path.abspath(LOG_FOLDER + "/" + name + ".log")
+
+	
 
 	# Get all users for this repo
-	users_repo = [user for user in users if repo in user.repo]
-	print(f"\r\033[94m{number}/{total} ({name})\033[0m {len(users_repo)} users found")
-	j = 1
-	for user in users_repo:
-		print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>...")
-		# Change name and email
-		res = os.system("sed -i -e \"s/OLD_EMAIL=.*/OLD_EMAIL=\\\"""" + user.email + """\\\"/\" """ + LOCAL_FOLDER + "/" + name + """/git-rename.sh""" + " >> " + log_absolute + " 2>&1")
+	if len(users) != 0:	
+		users_repo = [user for user in users if repo in user.repo]
+		print(f"\r\033[94m{number}/{total} ({name})\033[0m {len(users_repo)} users found")
+		# Move script
+		res = os.system("cp rename-user.sh " + LOCAL_FOLDER + "/" + name + " >> " + LOG_FOLDER + "/" + name + ".log 2>&1")
 		if res != 0:
-			print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
-			return
-		res = os.system("sed -i -e \"s/CORRECT_NAME=.*/CORRECT_NAME=\\\"""" + user.new_name + """\\\"/\" """ + LOCAL_FOLDER + "/" + name + """/git-rename.sh""" + " >> " + log_absolute + " 2>&1")
-		if res != 0:
-			print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
-			return
-		res = os.system("sed -i -e \"s/CORRECT_EMAIL=.*/CORRECT_EMAIL=\\\"""" + user.new_email + """\\\"/\" """ + LOCAL_FOLDER + "/" + name + """/git-rename.sh""" + " >> " + log_absolute + " 2>&1")
-		if res != 0:
-			print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
+			print(f"\r\033[94m{number}/{total} ({name})\033[0m Moving rename script... \033[91mERROR\033[0m")
 			return
 
+		j = 1
+		for user in users_repo:
+			print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>...")
+			# Change name and email
+			res = os.system("sed -i -e \"s/OLD_EMAIL=.*/OLD_EMAIL=\\\"""" + user.email + """\\\"/\" """ + LOCAL_FOLDER + "/" + name + """/rename-user.sh""" + " >> " + log_absolute + " 2>&1")
+			if res != 0:
+				print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
+				return
+			res = os.system("sed -i -e \"s/CORRECT_NAME=.*/CORRECT_NAME=\\\"""" + user.new_name + """\\\"/\" """ + LOCAL_FOLDER + "/" + name + """/rename-user.sh""" + " >> " + log_absolute + " 2>&1")
+			if res != 0:
+				print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
+				return
+			res = os.system("sed -i -e \"s/CORRECT_EMAIL=.*/CORRECT_EMAIL=\\\"""" + user.new_email + """\\\"/\" """ + LOCAL_FOLDER + "/" + name + """/rename-user.sh""" + " >> " + log_absolute + " 2>&1")
+			if res != 0:
+				print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
+				return
+
+			# Launch script
+			res = os.system("cd " + LOCAL_FOLDER + "/" + name + " && sh ./rename-user.sh" + " >> " + log_absolute + " 2>&1")
+			if res != 0:
+				print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
+				return
+
+			print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[92mOK\033[0m")
+			j+=1
+		
+	if actions:
+		print(f"\r\033[94m{number}/{total} ({name})\033[0m Executing actions...")
+		# Move script
+		res = os.system("cp actions-git.sh " + LOCAL_FOLDER + "/" + name + " >> " + LOG_FOLDER + "/" + name + ".log 2>&1")
+		if res != 0:
+			print(f"\r\033[94m{number}/{total} ({name})\033[0m Moving actions script... \033[91mERROR\033[0m")
+			return
 		# Launch script
-		res = os.system("cd " + LOCAL_FOLDER + "/" + name + " && sh ./git-rename.sh" + " >> " + log_absolute + " 2>&1")
+		res = os.system("cd " + LOCAL_FOLDER + "/" + name + " && sh ./actions-git.sh" + " >> " + log_absolute + " 2>&1")
 		if res != 0:
-			print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[91mERROR\033[0m")
+			print(f"\r\033[94m{number}/{total} ({name})\033[0m Executing actions... \033[91mERROR\033[0m")
 			return
-
-		print(f"\r\033[94m{number}/{total} ({name})\033[0m \033[93m{j}/{len(users_repo)}\033[0m {user.email} -> {user.new_name} <{user.new_email}>... \033[92mOK\033[0m")
-		j+=1
-	
-
+		print(f"\r\033[94m{number}/{total} ({name})\033[0m Executing actions... \033[92mOK\033[0m")
+		
 	# Push
 	print(f"\r\033[94m{number}/{total} ({name})\033[0m Pushing...")
 	res = os.system("cd " + LOCAL_FOLDER + "/" + name + " && git push --force" + " >> " + log_absolute + " 2>&1")
@@ -73,27 +88,51 @@ def process_repo(repo, users, number, total, lock):
 
 if __name__ == '__main__':
 
-# Verify if CARREFUL_LINE is in the file
-	if CARREFUL_LINE in open(FILE).read():
-		print("Error: " + FILE + " is not ready for use (think to delete the carreful line before using this script)")
-		exit(1)
+	# Verify if CARREFUL_LINE is in the file
+	# email.list exist 
+	email = True
+	actions = False
+	if os.path.isfile(FILE):
+		if CARREFUL_LINE in open(FILE).read():
+			print("Error: " + FILE + " is not ready for use (think to delete the carreful line before using this script)")
+			exit(1)
+	else:
+		email = False
+
+	# If actions.git has line without "#" it's ready for use
+	if os.path.isfile("actions-git.sh"):
+		# If there is one line without "#" it's ready for use
+		for line in open("actions-git.sh").readlines():
+			if line == "\n":
+				continue
+			if "#" not in line:
+				actions = True
+				break
+		
 
 	# Rm local folder
 	os.system("rm -rf " + LOCAL_FOLDER)
 	os.system("rm -rf " + LOG_FOLDER)
 
 	# Read the file
-	users = read_users(FILE)
-	
-	# Keep only user with modified name or email
-	users = [user for user in users if user.modified()]
+	users= []
+	if email:
+		users = read_users(FILE)
 
-	# List off all repo to clone
-	repos = []
-	for user in users:
-		for repo in user.repo:
-			if repo not in repos:
-				repos.append(repo)
+		# Keep only user with modified name or email
+		users = [user for user in users if user.modified()]
+		repos = []
+		for user in users:
+			for repo in user.repo:
+				if repo not in repos:
+					repos.append(repo)
+	if actions:
+		r = list_repos()
+		for repo in r:
+			if repo['ssh_url'] not in repos:
+				repos.append(repo['ssh_url'])
+		
+		
 
 	print("Found " + str(len(repos)) + " repositories to process")
 
@@ -102,7 +141,7 @@ if __name__ == '__main__':
 	i = 1
 	lock = threading.Lock()
 	for repo in repos:
-		t = threading.Thread(target=process_repo, args=(repo, users, i, len(repos), lock))
+		t = threading.Thread(target=process_repo, args=(repo, users, i, len(repos), lock, actions))
 		threads.append(t)
 		t.start()
 		i += 1
